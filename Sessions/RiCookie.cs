@@ -9,11 +9,15 @@ public class RiCookie(string name, string value)
     public bool HttpOnly { get; set; }
     public bool Secure { get; set; }
 
+    /// <summary>
+    /// Returns a string representation of the cookie in the format: "Name=Value;[Expires=RFC1123 formatted date];[Path=path];[HttpOnly];[Secure]".
+    /// </summary>
+    /// <returns>The string representation of the cookie.</returns>
     public override string ToString()
     {
         var cookieString = $"{Name}={Value};";
         if (Expires.HasValue)
-            cookieString += $" Expires={Expires.Value.ToUniversalTime().ToString("R")};"; // RFC1123 format
+            cookieString += $" Expires={Expires.Value.ToUniversalTime():R};"; // RFC1123 format
         if (!string.IsNullOrEmpty(Path))
             cookieString += $" Path={Path};";
         if (HttpOnly)

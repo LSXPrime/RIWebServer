@@ -12,13 +12,13 @@ using RIWebServer.Sessions;
 
 namespace RIWebServer;
 
-public class RiWebServer
+public class RiWebServer(int port, string ipAddress = "")
 {
-    private readonly TcpListener _listener;
+    private readonly TcpListener _listener = new(string.IsNullOrEmpty(ipAddress) ? IPAddress.Any : IPAddress.Parse(ipAddress), port);
 
     private readonly SessionManager _sessionManager = new();
     private readonly Router _router = new();
-    private readonly MiddlewareManager _middlewareManager;
+    private readonly MiddlewareManager _middlewareManager = new();
 
     private readonly Dictionary<string, Func<object, string>> _supportedMediaTypes = new()
     {
@@ -35,12 +35,10 @@ public class RiWebServer
         { "text/plain", o => o.ToString()! },
     };
 
-    public RiWebServer(int port, string ipAddress = "")
-    {
-        _listener = new TcpListener(string.IsNullOrEmpty(ipAddress) ? IPAddress.Any : IPAddress.Parse(ipAddress), port);
-        _middlewareManager = new MiddlewareManager();
-    }
-
+    /// <summary>
+    /// Asynchronously starts the server, listens for incoming TCP connections, and handles them.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     public async Task Start()
     {
         _listener.Start();
@@ -56,6 +54,12 @@ public class RiWebServer
         // ReSharper disable once FunctionNeverReturns
     }
 
+    /// <summary>
+    /// Asynchronously handles a client connection by reading the request, parsing headers, reading the body if present, 
+    /// managing sessions, routing the request, invoking middleware, and sending the HTTP response.
+    /// </summary>
+    /// <param name="client">The TCP client representing the connected client.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     private async Task HandleClient(TcpClient client)
     {
         var stream = client.GetStream();
@@ -103,6 +107,11 @@ public class RiWebServer
         client.Close();
     }
 
+    /// <summary>
+    /// Parses the header line of an HTTP request and updates the corresponding properties of the <see cref="RiRequest"/> object.
+    /// </summary>
+    /// <param name="request">The <see cref="RiRequest"/> object to update.</param>
+    /// <param name="headerLine">The header line to parse.</param>
     private void ParseHeader(RiRequest request, string headerLine)
     {
         if (headerLine.StartsWith("GET", StringComparison.OrdinalIgnoreCase) ||
@@ -125,6 +134,11 @@ public class RiWebServer
         }
     }
 
+    /// <summary>
+    /// Sends an HTTP response over the network stream, including the response header and body.
+    /// </summary>
+    /// <param name="stream">The network stream to send the response over.</param>
+    /// <param name="response">The <see cref="RiResponse"/> object containing the response details.</param>
     private void SendResponse(NetworkStream stream, RiResponse response)
     {
         // Build the response header
@@ -145,7 +159,11 @@ public class RiWebServer
         stream.Write(bodyBytes);
     }
     
-    // Get content type from file extension
+    /// <summary>
+    /// Determines the content type of a file based on its file extension.
+    /// </summary>
+    /// <param name="fileName">The name of the file.</param>
+    /// <returns>The content type of the file.</returns>
     private string GetContentType(string fileName)
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
@@ -165,7 +183,11 @@ public class RiWebServer
         };
     }
 
-    // Content Negotiation
+    /// <summary>
+    /// Negotiates the content type to use for the response based on the client's "Accept" header and supported media types.
+    /// </summary>
+    /// <param name="request">The <see cref="RiRequest"/> object containing the request details.</param>
+    /// <returns>The negotiated content type for the response.</returns>
     private string NegotiateContentType(RiRequest request)
     {
         var acceptHeader = request.Headers.GetValueOrDefault("Accept", "text/html");
@@ -186,7 +208,12 @@ public class RiWebServer
         return GetContentType(request.Path);
     }
 
-    // Serialize response based on content type
+    /// <summary>
+    /// Serializes the response object into the specified content type.
+    /// </summary>
+    /// <param name="result">The object to serialize.</param>
+    /// <param name="contentType">The content type to use for serialization.</param>
+    /// <returns>The serialized response as a string.</returns>
     private string SerializeResponse(object? result, string contentType)
     {
         if (result == null)
@@ -197,12 +224,26 @@ public class RiWebServer
         return serializer?.Invoke(result) ?? result.ToString() ?? "";
     }
 
-    // --- Routing Methods ---
+    /// <summary>
+    /// Adds a route to the router with the specified path template, handler, and HTTP method.
+    /// </summary>
+    /// <param name="pathTemplate">The path template for the route.</param>
+    /// <param name="handler">The handler function for the route.</param>
+    /// <param name="httpMethod">The HTTP method for the route (default: "GET").</param>
     public void AddRoute(string pathTemplate, Func<RiRequest, RiResponse> handler, string httpMethod = "GET")
     {
         _router.AddRoute(pathTemplate, handler, httpMethod);
     }
 
+    /// <summary>
+    /// Adds a route to the router with the specified path template, response, and HTTP method.
+    /// </summary>
+    /// <param name="pathTemplate">The path template for the route.</param>
+    /// <param name="response">The response to return for the route.</param>
+    /// <param name="httpMethod">The HTTP method for the route (default: "GET").</param>
+    /// <remarks>
+    /// This method internally calls the <see cref="AddRoute(string, Func{RiRequest, RiResponse}, string)"/> method with a lambda function that returns the specified response.
+    /// </remarks>
     public void AddRoute(string pathTemplate, RiResponse response, string httpMethod = "GET")
     {
         AddRoute(pathTemplate, Handler, httpMethod);
@@ -211,25 +252,43 @@ public class RiWebServer
         RiResponse Handler(RiRequest _) => response;
     }
 
-    public void AddRoute(string pathTemplate, string body, string httpMethod = "GET", string contentTpe = "text/html")
+    /// <summary>
+    /// Adds a route to the router with the specified path template, response body, HTTP method, and content type.
+    /// </summary>
+    /// <param name="pathTemplate">The path template for the route.</param>
+    /// <param name="body">The response body for the route.</param>
+    /// <param name="httpMethod">The HTTP method for the route (default: "GET").</param>
+    /// <param name="contentType">The content type for the response (default: "text/html").</param>
+    public void AddRoute(string pathTemplate, string body, string httpMethod = "GET", string contentType = "text/html")
     {
         RiResponse handler = new()
         {
             StatusCode = HttpStatusCode.OK,
             Body = body,
-            ContentType = contentTpe,
+            ContentType = contentType,
             ContentLength = Encoding.UTF8.GetByteCount(body)
         };
         AddRoute(pathTemplate, handler, httpMethod);
     }
 
-    // Overloads for different HTTP methods 
+    /// <summary>
+    /// Adds an asynchronous route to the router with the specified path template, handler, HTTP method, and optional middleware attributes.
+    /// </summary>
+    /// <param name="pathTemplate">The path template for the route.</param>
+    /// <param name="handler">The asynchronous handler function for the route.</param>
+    /// <param name="httpMethod">The HTTP method for the route (default: "GET").</param>
+    /// <param name="middlewareAttributes">Optional middleware attributes to apply to the route.</param>
     private void AddRoute(string pathTemplate, Func<RiRequest, Task<RiResponse>> handler, string httpMethod = "GET", IEnumerable<MiddlewareAttribute>? middlewareAttributes = null)
     {
         _router.AddRoute(pathTemplate, handler, httpMethod, middlewareAttributes);
     }
 
-    // Method to map controller actions to routes
+    /// <summary>
+    /// Maps a controller to the router with the specified controller factory, route prefix, and optional middleware attributes.
+    /// </summary>
+    /// <typeparam name="TController">The type of the controller to map.</typeparam>
+    /// <param name="controllerFactory">Optional factory function to create the controller instance (default: null).</param>
+    /// <param name="routePrefix">Optional route prefix to apply to all routes of the controller (default: "").</param>
     public void MapController<TController>(Func<TController>? controllerFactory = null, string routePrefix = "") where TController : new()
     {
         var controllerType = typeof(TController);
@@ -246,7 +305,7 @@ public class RiWebServer
             {
                 var httpMethod =
                     attribute.GetType().Name
-                        .Substring(2, attribute.GetType().Name.Length - 11); // Extract "Get", "Post", etc.
+                        .Substring(2, attribute.GetType().Name.Length - 11);
                 
                 var routeTemplate = attribute.GetType().GetProperty("Route")?.GetValue(attribute) as string ?? method.Name;
 
@@ -259,6 +318,12 @@ public class RiWebServer
         }
     }
 
+    /// <summary>
+    /// Creates a controller action function that handles the invocation of a controller method with the specified method information and controller instance.
+    /// </summary>
+    /// <param name="methodInfo">The method information of the controller method.</param>
+    /// <param name="controllerInstance">The instance of the controller.</param>
+    /// <returns>The controller action function.</returns>
     private Func<RiRequest, Task<RiResponse>> CreateControllerAction(MethodInfo methodInfo, object controllerInstance)
     {
         var parameters = methodInfo.GetParameters();
@@ -303,7 +368,6 @@ public class RiWebServer
             
             switch (result)
             {
-                // Handle the result 
                 case Task<RiResponse> task:
                     var awaitedResponse = await task;
                     awaitedResponse.Body = SerializeResponse(awaitedResponse.Body, contentType);
@@ -317,7 +381,6 @@ public class RiWebServer
                     return response;
                 default:
                 {
-                    // Otherwise, assume it's the response body
                     var responseBody = result?.ToString() ?? "";
 
                     return new RiResponse(SerializeResponse(responseBody, contentType))
@@ -330,7 +393,14 @@ public class RiWebServer
         };
     }
     
-    // Method to add middleware to the pipeline
+    /// <summary>
+    /// Adds a global middleware to the middleware manager.
+    /// </summary>
+    /// <param name="middleware">The middleware to add.</param>
+    /// <remarks>
+    /// This method adds the specified middleware to the global middleware list of the middleware manager.
+    /// The middleware will be executed for all incoming requests.
+    /// </remarks>
     public void AddMiddleware(IMiddleware middleware)
     {
         _middlewareManager.AddGlobalMiddleware(middleware);

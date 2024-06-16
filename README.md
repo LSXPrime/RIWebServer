@@ -2,7 +2,7 @@
 
 ## Overview
 
-RI WebServer is a lightweight, cross-platform web server built using C#. It's designed to be easy to use and extend, allowing you to quickly create web applications, APIs.
+RI WebServer is a lightweight, cross-platform web server built using C#. It's designed to be easy to use and extend, allowing you to quickly create web applications, APIs, and more, with zero external dependencies (well, except for the SQLite package).
 
 But let's forget all the fancy stuff for now—this is just a simple web server for my portfolio. Still, it’s pretty handy. I'll use it to create APIs for some personal projects and might tweak it later.
 

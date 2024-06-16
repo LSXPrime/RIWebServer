@@ -8,6 +8,17 @@ namespace RIWebServer.Authentication.Middleware;
 
 public class AuthenticationMiddleware : IMiddleware
 {
+    /// <summary>
+    /// Asynchronously invokes the middleware for the given request and response.
+    /// If the request contains an "Authorization" header with a valid token,
+    /// the user ID is extracted from the token and set as the request's user.
+    /// If the token is valid, the next middleware in the pipeline is invoked.
+    /// If the token is invalid or missing, the response is set to Unauthorized status.
+    /// </summary>
+    /// <param name="request">The incoming request.</param>
+    /// <param name="response">The outgoing response.</param>
+    /// <param name="next">The next middleware in the pipeline.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task InvokeAsync(RiRequest request, RiResponse response, Func<Task> next)
     {
         if (request.Headers.TryGetValue("Authorization", out var authHeader))
@@ -32,6 +43,17 @@ public class AuthenticationMiddleware : IMiddleware
         response.ContentLength = Encoding.UTF8.GetByteCount(response.Body);
     }
 
+    /// <summary>
+    /// Validates a token by splitting it into its header, payload, and signature parts.
+    /// Decodes the header and payload using Base64Url encoding and deserializes them into dictionaries.
+    /// Generates the expected signature by signing the header and payload and encodes it using Base64Url.
+    /// Checks if the expected signature matches the provided signature.
+    /// If the payload contains an "exp" field, checks if it is still valid (not expired).
+    /// If the payload contains a "sub" field, tries to parse it as an integer and returns it.
+    /// Returns null if any of the validation steps fail.
+    /// </summary>
+    /// <param name="token">The token to be validated.</param>
+    /// <returns>The user ID parsed from the payload if the token is valid, null otherwise.</returns>
     private int? ValidateToken(string token)
     {
         try

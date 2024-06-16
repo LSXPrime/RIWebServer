@@ -9,12 +9,18 @@ public abstract class DbContext(string connectionString)
 {
     private readonly List<EntityChange> _changes = [];
 
+    /// <summary>
+    /// Creates a new instance of the IDbConnection class using the provided connection string.
+    /// </summary>
+    /// <returns>An instance of the SQLiteConnection class.</returns>
     public IDbConnection CreateConnection()
     {
         return new SQLiteConnection(connectionString);
     }
 
-    // Method to create tables if they don't exist (code-first approach)
+    /// <summary>
+    /// Ensures that the database is created if it does not already exist.
+    /// </summary>
     public void EnsureDatabaseCreated()
     {
         using var connection = CreateConnection();
@@ -31,6 +37,11 @@ public abstract class DbContext(string connectionString)
         }
     }
 
+    /// <summary>
+    /// Creates a table in the database if it does not already exist.
+    /// </summary>
+    /// <param name="connection">The database connection.</param>
+    /// <param name="entityType">The type of the entity.</param>
     private void CreateTableIfNotExists(IDbConnection connection, Type entityType)
     {
         var tableName = entityType.Name;
@@ -72,26 +83,39 @@ public abstract class DbContext(string connectionString)
         command.ExecuteNonQuery();
     }
 
-    // Simple type mapping (can be extended with more types)
+    
+    /// <summary>
+    /// Returns the SQL data type for a given property type.
+    /// </summary>
+    /// <param name="propertyType">The property type.</param>
+    /// <returns>The corresponding SQL data type.</returns>
+    /// <exception cref="NotSupportedException">Thrown if the data type is not supported.</exception>
     private string GetSqlDataType(Type propertyType)
     {
         return propertyType switch
         {
-            // Use the actual type names as constants
             not null when propertyType == typeof(int) => "INTEGER",
             not null when propertyType == typeof(string) => "TEXT",
             not null when propertyType == typeof(DateTime) => "TEXT",
             _ => throw new NotSupportedException($"Data type '{propertyType?.Name}' not supported.")
         };
     }
-
-    // --- Helper methods for insert, update, and delete ---
-
+    
+    /// <summary>
+    /// Adds a <see cref="EntityChange"/> to the internal list of changes.
+    /// </summary>
+    /// <param name="change">The <see cref="EntityChange"/> to add.</param>
     private void TrackChange(EntityChange change)
     {
         _changes.Add(change);
     }
 
+    /// <summary>
+    /// Saves changes made to the database by executing the appropriate insert, update, or delete queries.
+    /// </summary>
+    /// <returns>
+    /// <c>true</c> if the changes were successfully saved, <c>false</c> otherwise.
+    /// </returns>
     public bool SaveChanges()
     {
         using var connection = CreateConnection();
@@ -129,7 +153,12 @@ public abstract class DbContext(string connectionString)
         }
     }
 
-    // --- Helper methods for insert, update, and delete ---
+    /// <summary>
+    /// Inserts an entity into the specified database connection.
+    /// </summary>
+    /// <param name="connection">The database connection.</param>
+    /// <param name="entity">The entity to be inserted.</param>
+    /// <exception cref="Exception">If there is an error executing the insert statement.</exception>
     private void InsertEntity(IDbConnection connection, object entity)
     {
         var entityType = entity.GetType();
@@ -146,6 +175,11 @@ public abstract class DbContext(string connectionString)
         command.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Updates an entity in the database table based on the provided entity and connection.
+    /// </summary>
+    /// <param name="connection">The database connection.</param>
+    /// <param name="entity">The entity to be updated.</param>
     private void UpdateEntity(IDbConnection connection, object entity)
     {
         var entityType = entity.GetType();
@@ -167,6 +201,11 @@ public abstract class DbContext(string connectionString)
         command.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Deletes an entity from the database table based on the provided entity and connection.
+    /// </summary>
+    /// <param name="connection">The database connection.</param>
+    /// <param name="entity">The entity to be deleted.</param>
     private void DeleteEntity(IDbConnection connection, object entity)
     {
         var entityType = entity.GetType();
@@ -184,6 +223,12 @@ public abstract class DbContext(string connectionString)
         command.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Retrieves the primary key value from the given entity.
+    /// </summary>
+    /// <param name="entity">The entity to retrieve the primary key value from.</param>
+    /// <returns>The primary key value of the entity.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if no primary key property is found.</exception>
     public object GetPrimaryKeyValue(object entity)
     {
         var primaryKeyProperty = entity.GetType().GetProperties()
@@ -198,6 +243,11 @@ public abstract class DbContext(string connectionString)
         throw new InvalidOperationException("No primary key property found.");
     }
 
+    /// <summary>
+    /// Retrieves the properties of the specified entity type that are to be persisted.
+    /// </summary>
+    /// <param name="entityType">The type of the entity.</param>
+    /// <returns>An enumerable collection of PropertyInfo objects representing the properties to persist.</returns>
     private IEnumerable<PropertyInfo> GetPropertiesToPersist(Type entityType)
     {
         return entityType.GetProperties()
@@ -206,6 +256,12 @@ public abstract class DbContext(string connectionString)
                         !p.GetCustomAttributes<NotMappedAttribute>().Any());
     }
 
+    /// <summary>
+    /// Adds the parameters of the specified entity to the specified command.
+    /// </summary>
+    /// <param name="command">The command to add the parameters to.</param>
+    /// <param name="entity">The entity to add the parameters for.</param>
+    /// <param name="properties">The properties of the entity to add the parameters for.</param>
     private void AddParameters(IDbCommand command, object entity, IEnumerable<PropertyInfo> properties)
     {
         foreach (var property in properties)
@@ -218,7 +274,6 @@ public abstract class DbContext(string connectionString)
         }
     }
 
-    // --- Entity Change Tracking --- 
     private enum EntityState
     {
         Added,
@@ -232,17 +287,28 @@ public abstract class DbContext(string connectionString)
         public EntityState State { get; } = state;
     }
 
-    // --- Methods to mark entities for change tracking --- 
+    /// <summary>
+    /// Adds an entity to the internal list of changes.
+    /// </summary>
+    /// <param name="entity"></param>
     public void AddEntity(object entity)
     {
         TrackChange(new EntityChange(entity, EntityState.Added));
     }
-
+    
+    /// <summary>
+    /// Modifies an entity in the internal list of changes.
+    /// </summary>
+    /// <param name="entity"></param>
     public void UpdateEntity(object entity)
     {
         TrackChange(new EntityChange(entity, EntityState.Modified));
     }
 
+    /// <summary>
+    /// Deletes an entity from the internal list of changes.
+    /// </summary>
+    /// <param name="entity"></param>
     public void DeleteEntity(object entity)
     {
         TrackChange(new EntityChange(entity, EntityState.Deleted));

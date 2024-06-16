@@ -1,5 +1,4 @@
-﻿// Sessions/SessionManager.cs
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using RIWebServer.Requests;
 
@@ -11,6 +10,11 @@ public class SessionManager
     private readonly TimeSpan _sessionTimeout = TimeSpan.FromMinutes(20);
     private const string SessionCookieName = "SESSION_ID";
 
+    /// <summary>
+    /// Asynchronously retrieves or creates a session for the given request.
+    /// </summary>
+    /// <param name="request">The request to retrieve or create a session for.</param>
+    /// <returns>A task representing the asynchronous operation. The task result contains the retrieved or created session.</returns>
     public Task<RiSession> GetOrCreateSessionAsync(RiRequest request)
     {
         var sessionId = GetSessionIdFromCookie(request);
@@ -30,11 +34,20 @@ public class SessionManager
         return Task.FromResult(session);
     }
 
+    /// <summary>
+    /// Retrieves the session ID from the cookie of the given request.
+    /// </summary>
+    /// <param name="request">The request to retrieve the session ID from.</param>
+    /// <returns>The session ID stored in the cookie, or null if the cookie does not exist or has no value.</returns>
     private string GetSessionIdFromCookie(RiRequest request)
     {
         return request.Cookies.GetValueOrDefault(SessionCookieName)!;
     }
 
+    /// <summary>
+    /// Generates a random session ID using cryptographically secure random bytes.
+    /// </summary>
+    /// <returns>A base64-encoded string representing the generated session ID.</returns>
     private string GenerateSessionId()
     {
         var randomBytes = new byte[32];
@@ -46,6 +59,11 @@ public class SessionManager
         return Convert.ToBase64String(randomBytes);
     }
 
+    /// <summary>
+    /// Asynchronously starts the cleanup process for expired sessions.
+    /// The cleanup process runs indefinitely, checking for expired sessions every 5 minutes.
+    /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     public async Task StartCleanup()
     {
         while (true)

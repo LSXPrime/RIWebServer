@@ -7,15 +7,29 @@ namespace RIWebServer.Routing;
 public class Router
 {
     private readonly List<Route> _routes = [];
-    public void AddRoute(string pathTemplate, Func<RiRequest, RiResponse> handler, string httpMethod = "GET", IEnumerable<MiddlewareAttribute>? middlewareAttributes = null) 
-        => AddRoute(pathTemplate, (req) => Task.FromResult(handler(req)), httpMethod, middlewareAttributes); 
-    public void AddRoute(string pathTemplate, Func<RiRequest, Task<RiResponse>> handler, string httpMethod = "GET", IEnumerable<MiddlewareAttribute>? middlewareAttributes = null)
-    {
-        // Escape special regex characters except for {param} placeholders
-        var regexPattern = "^" + Regex.Replace(pathTemplate, @"{([^}]+)}", @"(?<$1>[^/]+)") + "$";
-        // Replace {param} with named capture groups
-        
 
+    /// <summary>
+    /// Adds a route to the router with the given path template, handler, HTTP method, and optional middleware attributes.
+    /// </summary>
+    /// <param name="pathTemplate">The path template of the route.</param>
+    /// <param name="handler">The handler function for the route.</param>
+    /// <param name="httpMethod">The HTTP method of the route. Defaults to "GET".</param>
+    /// <param name="middlewareAttributes">Optional middleware attributes for the route.</param>
+    public void AddRoute(string pathTemplate, Func<RiRequest, RiResponse> handler, string httpMethod = "GET",
+        IEnumerable<MiddlewareAttribute>? middlewareAttributes = null)
+        => AddRoute(pathTemplate, (req) => Task.FromResult(handler(req)), httpMethod, middlewareAttributes);
+
+    /// <summary>
+    /// Adds a route to the router with the given path template, handler, HTTP method, and optional middleware attributes.
+    /// </summary>
+    /// <param name="pathTemplate">The path template of the route.</param>
+    /// <param name="handler">The handler function for the route.</param>
+    /// <param name="httpMethod">The HTTP method of the route. Defaults to "GET".</param>
+    /// <param name="middlewareAttributes">Optional middleware attributes for the route.</param>        
+    public void AddRoute(string pathTemplate, Func<RiRequest, Task<RiResponse>> handler, string httpMethod = "GET",
+        IEnumerable<MiddlewareAttribute>? middlewareAttributes = null)
+    {
+        var regexPattern = "^" + Regex.Replace(pathTemplate, @"{([^}]+)}", @"(?<$1>[^/]+)") + "$";
         _routes.Add(new Route
         {
             Regex = new Regex(regexPattern),
@@ -25,12 +39,17 @@ public class Router
         });
     }
 
+    /// <summary>
+    /// Routes the given request to the appropriate handler based on the request's path and HTTP method.
+    /// </summary>
+    /// <param name="request">The request to route.</param>
+    /// <returns>A RouteResult object containing the handler, route parameters, and middleware attributes, or null if no matching route is found.</returns>
     public RouteResult? Route(RiRequest request)
     {
         foreach (var route in _routes)
         {
             var match = route.Regex.Match(request.Path);
-            
+
             // Check if route matches
             if (!match.Success ||
                 !string.Equals(request.Method, route.HttpMethod, StringComparison.OrdinalIgnoreCase)) continue;
@@ -49,19 +68,4 @@ public class Router
 
         return null;
     }
-}
-
-public class Route
-{
-    public Regex Regex { get; set; } = null!;
-    public Func<RiRequest, Task<RiResponse>> Handler { get; set; } = null!; // Change to Task<RiResponse>
-    public string HttpMethod { get; set; } = null!; // Store the HTTP method
-    public List<MiddlewareAttribute> MiddlewareAttributes { get; set; } = [];
-}
-
-public class RouteResult
-{
-    public Func<RiRequest, Task<RiResponse>> Handler { get; set; } = null!;
-    public Dictionary<string, string> RouteParams { get; set; } = new(); 
-    public List<MiddlewareAttribute> MiddlewareAttributes { get; set; } = [];
 }

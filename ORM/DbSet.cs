@@ -10,6 +10,11 @@ public class DbSet<TEntity>(DbContext dbContext)
 {
     private readonly string _tableName = typeof(TEntity).Name;
 
+    /// <summary>
+    /// Retrieves an entity of type TEntity by its ID from the database.
+    /// </summary>
+    /// <param name="id">The ID of the entity to retrieve.</param>
+    /// <returns>The entity with the specified ID, or null if not found.</returns>
     public TEntity? GetById(int id)
     {
         using var connection = dbContext.CreateConnection();
@@ -26,6 +31,10 @@ public class DbSet<TEntity>(DbContext dbContext)
         return MapReaderToList<TEntity>(reader).FirstOrDefault();
     }
 
+    /// <summary>
+    /// Retrieves all entities of type TEntity from the database.
+    /// </summary>
+    /// <returns>A list of entities of type TEntity.</returns>
     public List<TEntity> GetAll()
     {
         using var connection = dbContext.CreateConnection();
@@ -38,6 +47,11 @@ public class DbSet<TEntity>(DbContext dbContext)
         return MapReaderToList<TEntity>(reader).ToList();
     }
 
+    /// <summary>
+    /// Retrieves all entities of type TEntity from the database along with their related entities
+    /// as specified by foreign key attributes.
+    /// </summary>
+    /// <returns>A list of entities of type TEntity with their related entities populated.</returns>
     public List<TEntity> GetAllWithRelated()
     {
         var entities = GetAll();
@@ -69,6 +83,12 @@ public class DbSet<TEntity>(DbContext dbContext)
         return entities;
     }
 
+    /// <summary>
+    /// Retrieves related entities from the specified table based on the provided list of related IDs.
+    /// </summary>
+    /// <param name="relatedTable">The name of the related table.</param>
+    /// <param name="relatedIds">The list of related IDs.</param>
+    /// <returns>A list of related entities.</returns>
     private List<object> GetRelatedEntities(string relatedTable, List<int> relatedIds)
     {
         try
@@ -90,16 +110,28 @@ public class DbSet<TEntity>(DbContext dbContext)
         }
     }
 
+    /// <summary>
+    /// Adds an entity to the database context.
+    /// </summary>
+    /// <param name="entity">The entity to be added.</param>
     public void Add(TEntity entity)
     {
         dbContext.AddEntity(entity);
     }
 
+    /// <summary>
+    /// Updates the specified entity in the database context.
+    /// </summary>
+    /// <param name="entity">The entity to be updated.</param>
     public void Update(TEntity entity)
     {
         dbContext.UpdateEntity(entity);
     }
 
+    /// <summary>
+    /// Deletes an entity from the database context by its ID.
+    /// </summary>
+    /// <param name="id">The ID of the entity to be deleted.</param>
     public void Delete(int id)
     {
         var entity = GetById(id);
@@ -109,7 +141,12 @@ public class DbSet<TEntity>(DbContext dbContext)
         }
     }
 
-    // Helper method to map data reader to a list of entities
+    /// <summary>
+    /// Maps a data reader to a list of objects of type TMap.
+    /// </summary>
+    /// <typeparam name="TMap">The type of objects to map to.</typeparam>
+    /// <param name="reader">The data reader to read from.</param>
+    /// <returns>An enumerable of objects of type TMap.</returns>
     private IEnumerable<TMap> MapReaderToList<TMap>(IDataReader reader) where TMap : class, new()
     {
         var entityType = typeof(TMap);

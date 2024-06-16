@@ -5,6 +5,14 @@ namespace RIWebServer.Example.Middleware;
 
 public class LoggingMiddleware : IMiddleware
 {
+    /// <summary>
+    /// Invokes the logging middleware asynchronously.
+    /// Writes request and response information to the console.
+    /// </summary>
+    /// <param name="request">The RiRequest object representing the incoming request.</param>
+    /// <param name="response">The RiResponse object representing the response.</param>
+    /// <param name="next">A delegate representing the next middleware in the chain.</param>
+    /// <returns>A Task representing the asynchronous operation.</returns>
     public async Task InvokeAsync(RiRequest request, RiResponse response, Func<Task> next)
     {
         Console.WriteLine(
